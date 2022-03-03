@@ -1,6 +1,10 @@
+const fs = require("fs");
+const path = require("path");
 const express = require("express");
 const { animals } = require("./data/animals.json");
 const app = express();
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 const PORT = process.env.PORT || 3001;
 
 function filterByQuery(query, animalsArray) {
@@ -24,7 +28,7 @@ function filterByQuery(query, animalsArray) {
       // so at the end we'll have an array of animals that have every one
       // of the traits when the .forEach() loop is finished.
       filteredResults = filteredResults.filter(
-        (animal) => animal.personalityTraits.indexOf(trait) !== -1 //?? QUESTION
+        (animal) => animal.personalityTraits.indexOf(trait) !== -1 // !== -1 >> meant to force a boolean value
       );
     });
   }
@@ -51,6 +55,32 @@ function findById(id, animalsArray) {
   return result;
 }
 
+function createNewAnimal(body, animalsArray) {
+  const animal = body;
+  animalsArray.push(animal);
+  fs.writeFileSync(
+    path.join(__dirname, "./data/animals.json"),
+    JSON.stringify({ animals: animalsArray }, null, 2)
+  );
+
+  return animal;
+}
+
+function validateAnimal(animal) {
+  if (!animal.name || typeof animal.name !== "string") {
+    return false;
+  }
+  if (!animal.apecies || typeof animal.species !== "string") {
+    return false;
+  }
+  if (!animal.diet || typeof animal.diet !== "string") {
+    return false;
+  }
+  if (!animal.personalityTraits || !Array.isArray(animal.personalityTraits)) {
+    return false;
+  }
+}
+
 app.get("/api/animals", (req, res) => {
   let results = animals;
   if (req.query) {
@@ -65,6 +95,17 @@ app.get("/api/animals/:id", (req, res) => {
     res.json(result);
   } else {
     res.sendStatus(404);
+  }
+});
+
+app.post("/api/animals", (req, res) => {
+  req.body.id = animals.length.toString();
+
+  if (!validateAnimal(req.body)) {
+    res.status(400).send("The animal is not properly formatted");
+  } else {
+    const animal = createNewAnimal(req.body, animals);
+    res.json(animal);
   }
 });
 
